@@ -1,7 +1,7 @@
 package com.luban.spring.framework;
 
 import java.io.File;
-import java.lang.annotation.Annotation;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URL;
 import java.util.Map;
@@ -75,21 +75,43 @@ public class LubanApplicationContext {
             // 非懒加载的单例bean
             if (!beanDefinition.isLazy() && "singleton".equals(beanDefinition.getScope())) {
                 // 创建bean对象
-                Object object = createBean(beanDefinition);
+                Object object = createBean(beanName,beanDefinition);
                 singletonObjects.put(beanName, object);
             }
         }
 
     }
 
-    // bean的生命周期（实例化--->填充属性--->?）
-    private Object createBean(BeanDefinition beanDefinition) {
+    // bean的生命周期（实例化--->填充属性--->Aware(相当于回调)--->初始化）
+    private Object createBean(String beanName,BeanDefinition beanDefinition) {
         Class beanClass = beanDefinition.getBeanClass();
         Object instance = null;
         try {
             instance = beanClass.getDeclaredConstructor().newInstance();
 
             // 填充属性
+            for (Field field : beanClass.getDeclaredFields()) {
+                if (field.isAnnotationPresent(Autowired.class)) {
+                    //
+                    String name = field.getName();
+                    Object bean = getBean(name);
+
+                    field.setAccessible(true);
+                    field.set(instance,bean);
+                }
+            }
+
+            // Aware
+            if (instance instanceof BeanNameAware) {
+                ((BeanNameAware) instance).setBeanName(beanName);
+            }
+            // 初始化
+            if (instance instanceof InitializingBean) {
+                ((InitializingBean) instance).afterPropertiesSet();
+            }
+
+            // AOP --> BeanPostProcessor
+
 
         } catch (InstantiationException e) {
             e.printStackTrace();
@@ -108,10 +130,17 @@ public class LubanApplicationContext {
         BeanDefinition beanDefinition = beanDefinitionMap.get(beanName);
         if ("singleton".equals(beanDefinition.getScope())) {
             Object bean = singletonObjects.get(beanName);
+
+            // 假设A类依懒B类,如果先加载A类，此时B类还未创建，这时又要给A类赋值B类，
+            // 此时就需要下面的判断
+            if (bean == null) {
+                bean = createBean(beanName,beanDefinition);
+            }
+
             return bean;
         } else {
             // 不是单例的，那就是原型的
-            Object bean = createBean(beanDefinition);
+            Object bean = createBean(beanName,beanDefinition);
             return bean;
         }
     }

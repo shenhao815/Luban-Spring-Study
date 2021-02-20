@@ -11,4 +11,8 @@ import com.luban.spring.framework.Scope;
 @Scope("prototype")
 public class UserService {
 
+    public String getUserName(){
+        return null;
+    }
+
 }

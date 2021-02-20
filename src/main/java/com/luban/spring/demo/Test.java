@@ -14,11 +14,13 @@ public class Test {
         // 启动spring
         LubanApplicationContext applicationContext = new LubanApplicationContext(AppConfig.class);
 
-        UserService orderService = (UserService) applicationContext.getBean("userService");
-        UserService orderService1 = (UserService) applicationContext.getBean("userService");
-        //UserService userService = orderService.getUserService();
+        OrderService orderService = (OrderService) applicationContext.getBean("orderService");
+        UserService userService = orderService.getUserService();
+        UserService userService1 = orderService.getUserService();
         System.out.println(orderService);
-        System.out.println(orderService1);
+        System.out.println(userService);
+        System.out.println(userService1);
+        System.out.println(orderService.getBeanName());
     }
 
 }

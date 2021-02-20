@@ -1,9 +1,6 @@
 package com.luban.spring.demo.service;
 
-import com.luban.spring.framework.Autowired;
-import com.luban.spring.framework.Component;
-import com.luban.spring.framework.Lazy;
-import com.luban.spring.framework.Scope;
+import com.luban.spring.framework.*;
 
 /**
  * @author ch
@@ -12,12 +9,29 @@ import com.luban.spring.framework.Scope;
 @Component("orderService")
 @Scope("prototype")
 @Lazy
-public class OrderService {
+public class OrderService implements BeanNameAware , InitializingBean{
 
     @Autowired
     private UserService userService;
 
+    // 想把该类在容器内的beanName传给此属性,此时就需要使用BeanNameAware
+    private String beanName;
+
+    private String userName;
+
     public UserService getUserService() {
         return userService;
+    }
+
+    public void setBeanName(String beanName) {
+        this.beanName = beanName;
+    }
+
+    public String getBeanName() {
+        return this.beanName;
+    }
+
+    public void afterPropertiesSet() {
+        this.userName = userService.getUserName();
     }
 }
