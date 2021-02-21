@@ -32,6 +32,7 @@ public class OrderService implements BeanNameAware , InitializingBean{
     }
 
     public void afterPropertiesSet() {
+        System.out.println("初始化 OrderService");
         this.userName = userService.getUserName();
     }
 }

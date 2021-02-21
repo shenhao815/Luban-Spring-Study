@@ -1,9 +1,12 @@
 package com.luban.spring.framework;
 
+import javax.lang.model.element.VariableElement;
 import java.io.File;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -21,6 +24,10 @@ public class LubanApplicationContext {
     // 单例池
     private Map<String, Object> singletonObjects = new ConcurrentHashMap<String, Object>();
 
+    // BeanPostProcessor集合
+    private List<BeanPostProcessor> beanPostProcessorList = new ArrayList<>();
+
+
     public LubanApplicationContext(Class configClass) {
         this.configClass = configClass;
 
@@ -36,6 +43,8 @@ public class LubanApplicationContext {
         URL resource = classLoader.getResource(packagePath);
         File file = new File(resource.getFile());// 目录
 
+
+        // 遍历扫描的包路径，此处应当使用递归
         for (File f : file.listFiles()) {// 严谨一点应当使用递归
             String absolutePath = f.getAbsolutePath();
 
@@ -63,6 +72,24 @@ public class LubanApplicationContext {
                         beanDefinition.setScope("singleton");
                     }
                     beanDefinitionMap.put(beanName, beanDefinition);
+
+
+                    // BeanPostProcessor.class.isAssignableFrom(clazz) 判断这个class是否实现了某个接口
+                    // instanceof 判断这个对象是否是继承或实现了某个类
+                    if (BeanPostProcessor.class.isAssignableFrom(clazz)) {
+                        try {
+                            BeanPostProcessor instance = (BeanPostProcessor) clazz.getDeclaredConstructor().newInstance();
+                            beanPostProcessorList.add(instance);
+                        } catch (InstantiationException e) {
+                            e.printStackTrace();
+                        } catch (IllegalAccessException e) {
+                            e.printStackTrace();
+                        } catch (InvocationTargetException e) {
+                            e.printStackTrace();
+                        } catch (NoSuchMethodException e) {
+                            e.printStackTrace();
+                        }
+                    }
                 }
             } catch (ClassNotFoundException e) {
                 e.printStackTrace();
@@ -105,9 +132,21 @@ public class LubanApplicationContext {
             if (instance instanceof BeanNameAware) {
                 ((BeanNameAware) instance).setBeanName(beanName);
             }
+
+
+            // 初始化之前调用后置处理器
+            for (BeanPostProcessor beanPostProcessor : beanPostProcessorList) {
+                beanPostProcessor.postProcessBeforeInitialization(instance, beanName);
+            }
+
             // 初始化
             if (instance instanceof InitializingBean) {
                 ((InitializingBean) instance).afterPropertiesSet();
+            }
+
+            // 初始化之后调用后置处理器
+            for (BeanPostProcessor beanPostProcessor : beanPostProcessorList) {
+                beanPostProcessor.postProcessAfterInitialization(instance, beanName);
             }
 
             // AOP --> BeanPostProcessor
